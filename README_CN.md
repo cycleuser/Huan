@@ -22,6 +22,12 @@
 
 ## 安装
 
+从 PyPI 安装：
+```bash
+pip install huan
+```
+
+如需安装最新开发版：
 ```bash
 git clone https://github.com/cycleuser/Huan.git
 cd Huan
@@ -56,26 +62,26 @@ pip install -e ".[all]"
 
 ```bash
 # 转换整个网站
-huan https://example.com
+huan https://geopytool.com
 
 # 限制转换前 100 个页面
-huan https://example.com -m 100
+huan https://geopytool.com -m 100
 
 # 指定输出目录
-huan https://example.com -o ./my-archive
+huan https://geopytool.com -o ./my-archive
 ```
 
 ### 内容提取
 
 ```bash
 # 默认：readability 提取（最佳质量，需要 readability-lxml）
-huan https://example.com
+huan https://geopytool.com
 
 # 启发式提取（基于标签匹配，无需额外依赖）
-huan https://example.com --extractor heuristic
+huan https://geopytool.com --extractor heuristic
 
 # 完整页面内容（不做提取过滤）
-huan https://example.com --extractor full
+huan https://geopytool.com --extractor full
 ```
 
 ### 元数据
@@ -87,7 +93,7 @@ huan https://example.com --extractor full
 title: "文章标题"
 author: "作者名称"
 published: 2024-01-15
-url: "https://example.com/article"
+url: "https://geopytool.com/article"
 language: zh
 word_count: 2847
 estimated_tokens: 3701
@@ -96,17 +102,17 @@ estimated_tokens: 3701
 
 如需禁用元数据提取：
 ```bash
-huan https://example.com --no-metadata
+huan https://geopytool.com --no-metadata
 ```
 
 ### 使用代理
 
 ```bash
 # 手动指定代理
-huan https://example.com --proxy http://127.0.0.1:7890
+huan https://geopytool.com --proxy http://127.0.0.1:7890
 
 # 使用系统代理（从 HTTP_PROXY/HTTPS_PROXY 环境变量读取）
-huan https://example.com --system-proxy
+huan https://geopytool.com --system-proxy
 ```
 
 ### 使用不同的后端
@@ -115,16 +121,16 @@ huan https://example.com --system-proxy
 
 ```bash
 # 默认：标准 requests 库（速度快，适合静态网站）
-huan https://example.com
+huan https://geopytool.com
 
 # curl_cffi 后端（兼容更多网站）
-huan https://example.com --fetcher curl
+huan https://geopytool.com --fetcher curl
 
 # 系统浏览器（推荐用于 JS 渲染的网站）
-huan https://example.com --fetcher browser
+huan https://geopytool.com --fetcher browser
 
 # Playwright（需要先运行：playwright install chromium）
-huan https://example.com --fetcher playwright
+huan https://geopytool.com --fetcher playwright
 ```
 
 **提示**：如果默认的 `requests` 后端在某个页面发现 0 个链接，工具会自动输出警告，建议尝试 `--fetcher curl` 或 `--fetcher browser`。
@@ -133,29 +139,29 @@ huan https://example.com --fetcher playwright
 
 ```bash
 # 新闻订阅类网站：使用 /archive 端点 + browser 后端
-huan https://example.com/archive --fetcher browser --scroll 50
+huan https://geopytool.com/archive --fetcher browser --scroll 50
 
 # 带无限滚动的博客平台
-huan https://example.com/ --fetcher browser --scroll 30
+huan https://geopytool.com/ --fetcher browser --scroll 30
 ```
 
 ### 其他选项
 
 ```bash
 # 同时保存原始 HTML
-huan https://example.com --save-html
+huan https://geopytool.com --save-html
 
 # 禁用图片下载
-huan https://example.com --no-download-images
+huan https://geopytool.com --no-download-images
 
 # 覆盖已存在的文件（禁用增量模式）
-huan https://example.com --overwrite
+huan https://geopytool.com --overwrite
 
 # 只转换 /docs 路径下的页面
-huan https://example.com --prefix /docs
+huan https://geopytool.com --prefix /docs
 
 # 详细输出，用于调试
-huan https://example.com -v
+huan https://geopytool.com -v
 ```
 
 ## 命令行参数
@@ -211,7 +217,7 @@ example.com/
 from huan import SiteCrawler
 
 converter = SiteCrawler(
-    start_url="https://example.com",
+    start_url="https://geopytool.com",
     output_dir="./archive",
     max_pages=50,
     fetcher_type="browser",
@@ -233,6 +239,10 @@ converter.crawl()
 - curl-cffi（更好的兼容性）
 - DrissionPage（系统浏览器）
 - playwright（无头 Chromium）
+
+## 运行截图
+
+![运行截图](images/sample.png)
 
 ## 许可证
 

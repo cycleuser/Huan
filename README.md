@@ -22,6 +22,12 @@ The name "huan" (换) means "convert" in Chinese.
 
 ## Installation
 
+Install from PyPI:
+```bash
+pip install huan
+```
+
+To install the latest development version from source:
 ```bash
 git clone https://github.com/cycleuser/Huan.git
 cd Huan
@@ -56,26 +62,26 @@ pip install -e ".[all]"
 
 ```bash
 # Convert an entire site
-huan https://example.com
+huan https://geopytool.com
 
 # Limit to first 100 pages
-huan https://example.com -m 100
+huan https://geopytool.com -m 100
 
 # Specify output directory
-huan https://example.com -o ./my-archive
+huan https://geopytool.com -o ./my-archive
 ```
 
 ### Content Extraction
 
 ```bash
 # Default: readability extraction (best quality, requires readability-lxml)
-huan https://example.com
+huan https://geopytool.com
 
 # Heuristic extraction (tag-based, no extra dependency needed)
-huan https://example.com --extractor heuristic
+huan https://geopytool.com --extractor heuristic
 
 # Full page content (no extraction filtering)
-huan https://example.com --extractor full
+huan https://geopytool.com --extractor full
 ```
 
 ### Metadata
@@ -87,7 +93,7 @@ Each Markdown file includes YAML front matter with extracted metadata:
 title: "Article Title"
 author: "Author Name"
 published: 2024-01-15
-url: "https://example.com/article"
+url: "https://geopytool.com/article"
 language: en
 word_count: 2847
 estimated_tokens: 3701
@@ -96,17 +102,17 @@ estimated_tokens: 3701
 
 To disable metadata extraction:
 ```bash
-huan https://example.com --no-metadata
+huan https://geopytool.com --no-metadata
 ```
 
 ### With Proxy
 
 ```bash
 # Manual proxy
-huan https://example.com --proxy http://127.0.0.1:7890
+huan https://geopytool.com --proxy http://127.0.0.1:7890
 
 # System proxy (from HTTP_PROXY/HTTPS_PROXY env vars)
-huan https://example.com --system-proxy
+huan https://geopytool.com --system-proxy
 ```
 
 ### Different Fetcher Backends
@@ -115,16 +121,16 @@ Some sites use JavaScript to render content, which the default `requests` backen
 
 ```bash
 # Default: standard requests (fast, works for static sites)
-huan https://example.com
+huan https://geopytool.com
 
 # curl_cffi backend (better compatibility with more sites)
-huan https://example.com --fetcher curl
+huan https://geopytool.com --fetcher curl
 
 # System browser (recommended for JS-rendered sites)
-huan https://example.com --fetcher browser
+huan https://geopytool.com --fetcher browser
 
 # Playwright (requires: playwright install chromium)
-huan https://example.com --fetcher playwright
+huan https://geopytool.com --fetcher playwright
 ```
 
 **Tip**: If the default `requests` backend finds 0 links on a page, the tool will print a warning suggesting you try `--fetcher curl` or `--fetcher browser`.
@@ -133,29 +139,29 @@ huan https://example.com --fetcher playwright
 
 ```bash
 # Newsletter sites: use /archive endpoint + browser fetcher
-huan https://example.com/archive --fetcher browser --scroll 50
+huan https://geopytool.com/archive --fetcher browser --scroll 50
 
 # Blog platforms with infinite scroll
-huan https://example.com/ --fetcher browser --scroll 30
+huan https://geopytool.com/ --fetcher browser --scroll 30
 ```
 
 ### Additional Options
 
 ```bash
 # Save raw HTML alongside Markdown
-huan https://example.com --save-html
+huan https://geopytool.com --save-html
 
 # Disable image downloading
-huan https://example.com --no-download-images
+huan https://geopytool.com --no-download-images
 
 # Overwrite existing files (disable incremental mode)
-huan https://example.com --overwrite
+huan https://geopytool.com --overwrite
 
 # Only convert pages under /docs
-huan https://example.com --prefix /docs
+huan https://geopytool.com --prefix /docs
 
 # Verbose output for debugging
-huan https://example.com -v
+huan https://geopytool.com -v
 ```
 
 ## Command-Line Options
@@ -211,7 +217,7 @@ example.com/
 from huan import SiteCrawler
 
 converter = SiteCrawler(
-    start_url="https://example.com",
+    start_url="https://geopytool.com",
     output_dir="./archive",
     max_pages=50,
     fetcher_type="browser",
@@ -233,6 +239,10 @@ Optional:
 - curl-cffi (better compatibility)
 - DrissionPage (for system browser)
 - playwright (for headless Chromium)
+
+## Screenshots
+
+![Running Screenshot](images/sample.png)
 
 ## License
 

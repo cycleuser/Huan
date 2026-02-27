@@ -24,16 +24,16 @@ Optional dependencies (for difficult sites):
     pip install playwright && playwright install chromium  # Heavyweight alternative
 
 Usage:
-    huan https://example.com
-    huan https://example.com -o output_folder
-    huan https://example.com -m 50 -d 1.0
-    huan https://example.com --prefix /docs
-    huan https://example.com --proxy http://127.0.0.1:7890
-    huan https://example.com --fetcher curl --proxy http://127.0.0.1:7890
-    huan https://example.com --fetcher browser --proxy http://127.0.0.1:7890
+    huan https://geopytool.com
+    huan https://geopytool.com -o output_folder
+    huan https://geopytool.com -m 50 -d 1.0
+    huan https://geopytool.com --prefix /docs
+    huan https://geopytool.com --proxy http://127.0.0.1:7890
+    huan https://geopytool.com --fetcher curl --proxy http://127.0.0.1:7890
+    huan https://geopytool.com --fetcher browser --proxy http://127.0.0.1:7890
 
 Or run as module:
-    python -m huan https://example.com
+    python -m huan https://geopytool.com
 """
 
 import argparse
@@ -1833,19 +1833,19 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Examples:
   # Convert entire site (default - no limit)
-  huan https://example.com
+  huan https://geopytool.com
 
   # Limit to first 100 pages
-  huan https://example.com -m 100
+  huan https://geopytool.com -m 100
 
   # With proxy and curl backend
-  huan https://example.com --fetcher curl --proxy http://127.0.0.1:7890
+  huan https://geopytool.com --fetcher curl --proxy http://127.0.0.1:7890
 
   # With system browser (Chrome/Edge) for JS-heavy sites
-  huan https://example.com --fetcher browser --proxy http://127.0.0.1:7890
+  huan https://geopytool.com --fetcher browser --proxy http://127.0.0.1:7890
 
   # For newsletter sites - use /archive to get all articles (infinite scroll)
-  huan https://example.com/archive --fetcher browser --scroll 30 --proxy http://127.0.0.1:7890
+  huan https://geopytool.com/archive --fetcher browser --scroll 30 --proxy http://127.0.0.1:7890
 
 Tips:
   - For newsletter sites: start with /archive URL to find all articles

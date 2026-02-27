@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 1120" font-family="'Segoe UI', Arial, sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <path d="M0,0 L10,3.5 L0,7" fill="#5b8def"/>
+    </marker>
+    <marker id="arrRed" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <path d="M0,0 L10,3.5 L0,7" fill="#e05252"/>
+    </marker>
+    <marker id="arrGreen" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <path d="M0,0 L10,3.5 L0,7" fill="#34a87d"/>
+    </marker>
+    <filter id="glow">
+      <feDropShadow dx="1" dy="1" stdDeviation="2" flood-color="#000" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <!-- Title -->
+  <text x="420" y="38" text-anchor="middle" fill="#222" font-size="24" font-weight="bold">Huan Runtime Flow</text>
+  <line x1="200" y1="52" x2="640" y2="52" stroke="#ccc" stroke-width="1"/>
+
+  <!-- Step 1: CLI Parse -->
+  <rect x="255" y="68" width="330" height="50" rx="25" fill="#1a1a2e" stroke="#4a6fa5" stroke-width="1.5" filter="url(#glow)"/>
+  <text x="420" y="88" text-anchor="middle" fill="#8ab4f8" font-size="14" font-weight="bold">1. CLI Argument Parsing</text>
+  <text x="420" y="106" text-anchor="middle" fill="#999" font-size="12">argparse: url, --fetcher, --extractor, --proxy ...</text>
+  <line x1="420" y1="118" x2="420" y2="142" stroke="#5b8def" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Step 2: Init SiteCrawler -->
+  <rect x="225" y="142" width="390" height="62" rx="8" fill="#1a1a2e" stroke="#7c3aed" stroke-width="1.5" filter="url(#glow)"/>
+  <text x="420" y="166" text-anchor="middle" fill="#c4b5fd" font-size="14" font-weight="bold">2. Initialize SiteCrawler</text>
+  <text x="420" y="184" text-anchor="middle" fill="#999" font-size="12">create_fetcher() / ImageDownloader()</text>
+  <text x="420" y="199" text-anchor="middle" fill="#999" font-size="12">html2text config / proxy resolve / normalize start_url</text>
+  <line x1="420" y1="204" x2="420" y2="232" stroke="#5b8def" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Step 3: BFS Loop start -->
+  <rect x="275" y="232" width="290" height="44" rx="22" fill="#0f3460" stroke="#2a5298" stroke-width="1.5" filter="url(#glow)"/>
+  <text x="420" y="260" text-anchor="middle" fill="#8ab4f8" font-size="15" font-weight="bold">3. BFS Loop: while queue</text>
+  <line x1="420" y1="276" x2="420" y2="304" stroke="#5b8def" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Decision: max_pages reached? -->
+  <polygon points="420,304 530,338 420,372 310,338" fill="#1a1a2e" stroke="#d4a017" stroke-width="1.5"/>
+  <text x="420" y="334" text-anchor="middle" fill="#e8c44a" font-size="13">max_pages</text>
+  <text x="420" y="350" text-anchor="middle" fill="#e8c44a" font-size="13">reached?</text>
+
+  <!-- Yes -> End -->
+  <line x1="530" y1="338" x2="610" y2="338" stroke="#e05252" stroke-width="2" marker-end="url(#arrRed)"/>
+  <text x="565" y="328" fill="#e05252" font-size="13">Yes</text>
+  <rect x="610" y="320" width="90" height="36" rx="18" fill="#5c1a1a" stroke="#e05252" stroke-width="1.2"/>
+  <text x="655" y="343" text-anchor="middle" fill="#f5a5a5" font-size="13">Break</text>
+
+  <!-- No -> continue -->
+  <line x1="420" y1="372" x2="420" y2="398" stroke="#34a87d" stroke-width="2" marker-end="url(#arrGreen)"/>
+  <text x="436" y="390" fill="#34a87d" font-size="13">No</text>
+
+  <!-- Step 4: Dequeue URL -->
+  <rect x="280" y="398" width="280" height="40" rx="8" fill="#1a1a2e" stroke="#4a6fa5" stroke-width="1.2" filter="url(#glow)"/>
+  <text x="420" y="424" text-anchor="middle" fill="#8ab4f8" font-size="14">4. url = queue.popleft()</text>
+  <line x1="420" y1="438" x2="420" y2="464" stroke="#5b8def" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Decision: File exists? -->
+  <polygon points="420,464 520,498 420,532 320,498" fill="#1a1a2e" stroke="#d4a017" stroke-width="1.5"/>
+  <text x="420" y="494" text-anchor="middle" fill="#e8c44a" font-size="12">File exists</text>
+  <text x="420" y="510" text-anchor="middle" fill="#e8c44a" font-size="12">&amp; !overwrite?</text>
+
+  <!-- Yes -> Is listing page? -->
+  <line x1="520" y1="498" x2="610" y2="498" stroke="#d4a017" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="560" y="488" fill="#e8c44a" font-size="13">Yes</text>
+
+  <polygon points="685,468 755,498 685,528 615,498" fill="#1a1a2e" stroke="#d4a017" stroke-width="1.2"/>
+  <text x="685" y="494" text-anchor="middle" fill="#e8c44a" font-size="11">Listing</text>
+  <text x="685" y="510" text-anchor="middle" fill="#e8c44a" font-size="11">page?</text>
+
+  <!-- Listing Yes -> re-fetch for links -->
+  <line x1="685" y1="528" x2="685" y2="556" stroke="#34a87d" stroke-width="2" marker-end="url(#arrGreen)"/>
+  <text x="700" y="546" fill="#34a87d" font-size="11">Yes</text>
+  <rect x="605" y="556" width="160" height="36" rx="6" fill="#0a3d2e" stroke="#34a87d" stroke-width="1.2"/>
+  <text x="685" y="579" text-anchor="middle" fill="#6ee7b7" font-size="12">Re-fetch for links</text>
+
+  <!-- Listing No -> skip -->
+  <line x1="755" y1="498" x2="790" y2="498" stroke="#e05252" stroke-width="1.5" marker-end="url(#arrRed)"/>
+  <text x="770" y="488" fill="#e05252" font-size="11">No</text>
+  <rect x="765" y="480" width="55" height="36" rx="6" fill="#1a1a2e" stroke="#e05252" stroke-width="1"/>
+  <text x="792" y="503" text-anchor="middle" fill="#f5a5a5" font-size="12">Skip</text>
+
+  <!-- No (file doesn't exist) -> Fetch -->
+  <line x1="420" y1="532" x2="420" y2="564" stroke="#34a87d" stroke-width="2" marker-end="url(#arrGreen)"/>
+  <text x="436" y="552" fill="#34a87d" font-size="13">No</text>
+
+  <!-- Step 5: Fetch HTML -->
+  <rect x="270" y="564" width="300" height="44" rx="8" fill="#1a1a2e" stroke="#7c3aed" stroke-width="1.5" filter="url(#glow)"/>
+  <text x="420" y="584" text-anchor="middle" fill="#c4b5fd" font-size="14" font-weight="bold">5. fetcher.fetch(url)</text>
+  <text x="420" y="602" text-anchor="middle" fill="#999" font-size="12">Returns (html, error)</text>
+  <line x1="420" y1="608" x2="420" y2="636" stroke="#5b8def" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Decision: fetch success? -->
+  <polygon points="420,636 510,664 420,692 330,664" fill="#1a1a2e" stroke="#d4a017" stroke-width="1.5"/>
+  <text x="420" y="668" text-anchor="middle" fill="#e8c44a" font-size="13">Success?</text>
+
+  <!-- Fail -> skip -->
+  <line x1="510" y1="664" x2="595" y2="664" stroke="#e05252" stroke-width="2" marker-end="url(#arrRed)"/>
+  <text x="546" y="654" fill="#e05252" font-size="13">Fail</text>
+  <rect x="595" y="646" width="110" height="36" rx="6" fill="#5c1a1a" stroke="#e05252" stroke-width="1"/>
+  <text x="650" y="669" text-anchor="middle" fill="#f5a5a5" font-size="13">skipped++</text>
+
+  <!-- OK -> extract links -->
+  <line x1="420" y1="692" x2="420" y2="718" stroke="#34a87d" stroke-width="2" marker-end="url(#arrGreen)"/>
+
+  <!-- Step 6: Parse & Extract Links -->
+  <rect x="240" y="718" width="360" height="54" rx="8" fill="#1a1a2e" stroke="#2a5298" stroke-width="1.5" filter="url(#glow)"/>
+  <text x="420" y="740" text-anchor="middle" fill="#8ab4f8" font-size="14" font-weight="bold">6. BeautifulSoup + Extract Links</text>
+  <text x="420" y="760" text-anchor="middle" fill="#999" font-size="12">_extract_links(soup, url) -> enqueue new</text>
+  <line x1="420" y1="772" x2="420" y2="798" stroke="#5b8def" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Step 7: Content Extraction -->
+  <rect x="225" y="798" width="390" height="62" rx="8" fill="#1a1a2e" stroke="#e94560" stroke-width="1.5" filter="url(#glow)"/>
+  <text x="420" y="822" text-anchor="middle" fill="#fca5a5" font-size="14" font-weight="bold">7. Content Extraction &amp; Preprocessing</text>
+  <text x="420" y="840" text-anchor="middle" fill="#999" font-size="12">readability | heuristic | full</text>
+  <text x="420" y="856" text-anchor="middle" fill="#999" font-size="12">preprocess_math() / _preprocess_tables() / _preprocess_code_blocks()</text>
+  <line x1="420" y1="860" x2="420" y2="886" stroke="#5b8def" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Step 8: Markdown Generation -->
+  <rect x="240" y="886" width="360" height="62" rx="8" fill="#1a1a2e" stroke="#4a6fa5" stroke-width="1.5" filter="url(#glow)"/>
+  <text x="420" y="910" text-anchor="middle" fill="#8ab4f8" font-size="14" font-weight="bold">8. _html_to_markdown()</text>
+  <text x="420" y="928" text-anchor="middle" fill="#999" font-size="12">html2text + YAML front matter + _count_tokens()</text>
+  <text x="420" y="944" text-anchor="middle" fill="#999" font-size="12">Image download + URL rewrite in md</text>
+  <line x1="420" y1="948" x2="420" y2="974" stroke="#5b8def" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Step 9: Save -->
+  <rect x="275" y="974" width="290" height="48" rx="8" fill="#0a3d2e" stroke="#34d399" stroke-width="1.5" filter="url(#glow)"/>
+  <text x="420" y="996" text-anchor="middle" fill="#6ee7b7" font-size="14" font-weight="bold">9. _save(filepath, content)</text>
+  <text x="420" y="1014" text-anchor="middle" fill="#999" font-size="12">.md + optional .html + images/</text>
+  <line x1="420" y1="1022" x2="420" y2="1048" stroke="#5b8def" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Step 10: Delay & loop back -->
+  <rect x="305" y="1048" width="230" height="40" rx="20" fill="#1a1a2e" stroke="#d4a017" stroke-width="1.2" filter="url(#glow)"/>
+  <text x="420" y="1074" text-anchor="middle" fill="#e8c44a" font-size="14">10. time.sleep(delay)</text>
+
+  <!-- Loop arrow back to BFS -->
+  <path d="M305,1068 L150,1068 L150,254 L275,254" fill="none" stroke="#888" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+  <text x="132" y="660" fill="#888" font-size="13" text-anchor="middle" transform="rotate(-90, 132, 660)">Loop back to BFS queue</text>
+
+  <!-- Footer -->
+  <text x="420" y="1112" text-anchor="middle" fill="#999" font-size="12">Huan Runtime Flow  |  crawl() method in huan/core.py</text>
+</svg>
