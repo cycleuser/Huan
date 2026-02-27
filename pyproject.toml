@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=64.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "huan"
+dynamic = ["version"]
+description = "A tool that converts web pages to Markdown files, preserving URL structure"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.28.0",
+    "beautifulsoup4>=4.11.0",
+    "html2text>=2020.1.16",
+    "certifi>=2023.0.0",
+]
+
+[project.optional-dependencies]
+readability = ["readability-lxml>=0.8.0"]
+curl = ["curl-cffi>=0.5.0"]
+browser = ["DrissionPage>=4.0.0"]
+playwright = ["playwright>=1.40.0"]
+all = [
+    "readability-lxml>=0.8.0",
+    "curl-cffi>=0.5.0",
+    "DrissionPage>=4.0.0",
+    "playwright>=1.40.0",
+]
+
+[project.scripts]
+huan = "huan.core:main"
+
+[project.urls]
+Homepage = "https://github.com/cycleuser/Huan"
+Repository = "https://github.com/cycleuser/Huan"
+
+[tool.setuptools.dynamic]
+version = {attr = "huan.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["huan", "huan.*"]
