@@ -1937,9 +1937,20 @@ Tips:
         help="Also save the original HTML file alongside each markdown file",
     )
     ap.add_argument(
-        "--version",
+        "-V", "--version",
         action="version",
         version=f"%(prog)s {__version__}",
+    )
+    ap.add_argument(
+        "--json",
+        action="store_true",
+        dest="json_output",
+        help="Output results as JSON",
+    )
+    ap.add_argument(
+        "-q", "--quiet",
+        action="store_true",
+        help="Suppress non-essential output",
     )
     args = ap.parse_args()
 

@@ -244,6 +244,29 @@ Optional:
 
 ![Running Screenshot](images/sample.png)
 
+## Agent Integration (OpenAI Function Calling)
+
+Huan exposes an OpenAI-compatible tool for LLM agents:
+
+```python
+from huan.tools import TOOLS, dispatch
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=messages,
+    tools=TOOLS,
+)
+
+result = dispatch(
+    tool_call.function.name,
+    tool_call.function.arguments,
+)
+```
+
+## CLI Help
+
+![CLI Help](images/huan_help.png)
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.

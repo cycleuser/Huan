@@ -1,0 +1,76 @@
+usage: huan [-h] [-o OUTPUT] [-d DELAY] [-m MAX_PAGES] [--prefix PREFIX]
+            [--full] [--extractor {readability,heuristic,full}]
+            [--no-metadata] [--no-verify-ssl] [--proxy PROXY] [--system-proxy]
+            [--fetcher {requests,curl,browser,playwright}] [--scroll SCROLL]
+            [--overwrite] [-v] [--no-download-images] [--save-html] [-V]
+            [--json] [-q]
+            url
+
+Convert web pages to Markdown files, preserving the site's directory structure.
+
+positional arguments:
+  url                   Starting URL to archive
+
+options:
+  -h, --help            show this help message and exit
+  -o OUTPUT, --output OUTPUT
+                        Output directory (default: domain name)
+  -d DELAY, --delay DELAY
+                        Seconds between requests (default: 0.5)
+  -m MAX_PAGES, --max-pages MAX_PAGES
+                        Limit number of pages to save (default: no limit,
+                        archive entire site)
+  --prefix PREFIX       Only archive URLs whose path starts with this prefix
+                        (e.g. /docs)
+  --full                Save full page content (alias for --extractor full,
+                        kept for backward compatibility)
+  --extractor {readability,heuristic,full}
+                        Content extraction strategy: readability (default,
+                        best quality, requires readability-lxml), heuristic
+                        (tag-based fallback), full (entire page)
+  --no-metadata         Disable YAML front matter metadata extraction (enabled
+                        by default)
+  --no-verify-ssl       Disable SSL certificate verification
+  --proxy PROXY         HTTP/HTTPS proxy URL (e.g. http://127.0.0.1:7890)
+  --system-proxy        Use system proxy from HTTP_PROXY / HTTPS_PROXY
+                        environment variables
+  --fetcher {requests,curl,browser,playwright}
+                        Fetcher backend: requests (default), curl (better
+                        compatibility), browser (system Chrome/Edge via
+                        DrissionPage), playwright (requires playwright install
+                        chromium)
+  --scroll SCROLL       Number of times to scroll page for lazy-loaded content
+                        (default: 20, use 0 to disable, only works with
+                        --fetcher browser)
+  --overwrite           Overwrite existing files (default: skip existing for
+                        incremental archiving)
+  -v, --verbose         Verbose mode: show all discovered links during
+                        archiving (useful for debugging)
+  --no-download-images  Disable downloading images (by default images are
+                        downloaded and saved locally with relative paths in
+                        markdown)
+  --save-html           Also save the original HTML file alongside each
+                        markdown file
+  -V, --version         show program's version number and exit
+  --json                Output results as JSON
+  -q, --quiet           Suppress non-essential output
+
+Examples:
+  # Convert entire site (default - no limit)
+  huan https://geopytool.com
+
+  # Limit to first 100 pages
+  huan https://geopytool.com -m 100
+
+  # With proxy and curl backend
+  huan https://geopytool.com --fetcher curl --proxy http://127.0.0.1:7890
+
+  # With system browser (Chrome/Edge) for JS-heavy sites
+  huan https://geopytool.com --fetcher browser --proxy http://127.0.0.1:7890
+
+  # For newsletter sites - use /archive to get all articles (infinite scroll)
+  huan https://geopytool.com/archive --fetcher browser --scroll 30 --proxy http://127.0.0.1:7890
+
+Tips:
+  - For newsletter sites: start with /archive URL to find all articles
+  - Use --scroll 30 or higher for sites with many lazy-loaded articles

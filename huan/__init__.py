@@ -9,5 +9,6 @@ __version__ = "0.2.0"
 __author__ = "huan contributors"
 
 from .core import SiteCrawler, main
+from .api import ToolResult, archive_site
 
-__all__ = ["SiteCrawler", "main", "__version__"]
+__all__ = ["SiteCrawler", "main", "__version__", "ToolResult", "archive_site"]

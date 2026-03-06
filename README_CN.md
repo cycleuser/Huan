@@ -244,6 +244,29 @@ converter.crawl()
 
 ![运行截图](images/sample.png)
 
+## Agent 集成（OpenAI Function Calling）
+
+Huan 提供 OpenAI 兼容的工具定义，可供 LLM Agent 调用：
+
+```python
+from huan.tools import TOOLS, dispatch
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=messages,
+    tools=TOOLS,
+)
+
+result = dispatch(
+    tool_call.function.name,
+    tool_call.function.arguments,
+)
+```
+
+## CLI 帮助
+
+![CLI 帮助](images/huan_help.png)
+
 ## 许可证
 
 MIT License - 详见 [LICENSE](LICENSE) 文件。
