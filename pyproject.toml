@@ -9,6 +9,17 @@ description = "A tool that converts web pages to Markdown files, preserving URL 
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
+authors = [
+    {name = "cycleuser"},
+]
+classifiers = [
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
 dependencies = [
     "requests>=2.28.0",
     "beautifulsoup4>=4.11.0",
