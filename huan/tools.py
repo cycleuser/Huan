@@ -70,6 +70,11 @@ TOOLS = [
                         "description": "Also save original HTML files.",
                         "default": False,
                     },
+                    "recursive": {
+                        "type": "boolean",
+                        "description": "Recursively crawl entire site (default: single page only).",
+                        "default": False,
+                    },
                 },
                 "required": ["url"],
             },

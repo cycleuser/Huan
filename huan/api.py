@@ -44,6 +44,7 @@ def archive_site(
     save_html: bool = False,
     metadata: bool = True,
     scroll_count: int = 20,
+    recursive: bool = False,
 ) -> ToolResult:
     """Archive a website to local Markdown files.
 
@@ -108,6 +109,7 @@ def archive_site(
             save_html=save_html,
             extractor=extractor,
             metadata=metadata,
+            recursive=recursive,
         )
 
         archiver.crawl()

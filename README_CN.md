@@ -1,18 +1,19 @@
 # huan (换)
 
-一个命令行工具，用于将打开的网页转换为 Markdown 文件，保留网站的 URL 结构作为本地文件夹层级。
+一个命令行工具，用于将网页转换为完美的 Markdown 文件。默认只下载提供的链接，使用 `-r` 可递归转换整个网站。
 
 "huan"（换）在中文里意为"转换"。
 
 ## 功能特性
 
-- **网页转换** - 遍历网站，将每个页面转换为清晰的 Markdown 文档
+- **单页或全站** - 默认：只下载提供的链接，输出完美 Markdown。使用 `-r` 递归转换整个网站
+- **完美 Markdown** - 清晰、格式良好的 Markdown，支持公式、代码块和图片
+- **图片下载** - 下载所有图片到 `images/` 目录，Markdown 中使用相对路径引用
+- **数学公式转换** - 将 MathML、MathJax、KaTeX 转换为 LaTeX 格式
 - **智能内容提取** - 使用 Mozilla Readability 算法实现高质量正文提取（通过 readability-lxml）
 - **丰富元数据** - 自动提取标题、作者、日期、Open Graph、Schema.org 等信息，以 YAML front matter 格式输出
 - **多种 HTTP 后端** - 可选 requests、curl_cffi、DrissionPage（系统浏览器）或 Playwright
 - **无限滚动支持** - 自动滚动加载懒加载内容
-- **数学公式转换** - 将 MathML、MathJax、KaTeX 转换为 LaTeX 格式
-- **图片下载** - 下载图片到本地，Markdown 中使用相对路径引用
 - **代码块语言识别** - 保留 HTML 中的语言标注，输出正确的 Markdown 代码围栏
 - **表格预处理** - 处理含有 colspan/rowspan 的复杂表格，输出更清晰的 Markdown 表格
 - **Token 估算** - 输出字数统计和 Token 估算值，方便 LLM 用量规划
@@ -61,27 +62,30 @@ pip install -e ".[all]"
 ### 基础用法
 
 ```bash
-# 转换整个网站
-huan https://geopytool.com
+# 转换单个页面为 Markdown（默认行为）
+huan https://geopytool.com/article-123
 
-# 限制转换前 100 个页面
-huan https://geopytool.com -m 100
+# 递归转换整个网站
+huan https://geopytool.com -r
+
+# 限制递归转换前 100 个页面
+huan https://geopytool.com -r -m 100
 
 # 指定输出目录
-huan https://geopytool.com -o ./my-archive
+huan https://geopytool.com/article -o ./my-archive
 ```
 
 ### 内容提取
 
 ```bash
 # 默认：readability 提取（最佳质量，需要 readability-lxml）
-huan https://geopytool.com
+huan https://geopytool.com/article
 
 # 启发式提取（基于标签匹配，无需额外依赖）
-huan https://geopytool.com --extractor heuristic
+huan https://geopytool.com/article --extractor heuristic
 
 # 完整页面内容（不做提取过滤）
-huan https://geopytool.com --extractor full
+huan https://geopytool.com/article --extractor full
 ```
 
 ### 元数据
@@ -102,17 +106,17 @@ estimated_tokens: 3701
 
 如需禁用元数据提取：
 ```bash
-huan https://geopytool.com --no-metadata
+huan https://geopytool.com/article --no-metadata
 ```
 
 ### 使用代理
 
 ```bash
 # 手动指定代理
-huan https://geopytool.com --proxy http://127.0.0.1:7890
+huan https://geopytool.com/article --proxy http://127.0.0.1:7890
 
 # 使用系统代理（从 HTTP_PROXY/HTTPS_PROXY 环境变量读取）
-huan https://geopytool.com --system-proxy
+huan https://geopytool.com/article --system-proxy
 ```
 
 ### 使用不同的后端
@@ -121,16 +125,16 @@ huan https://geopytool.com --system-proxy
 
 ```bash
 # 默认：标准 requests 库（速度快，适合静态网站）
-huan https://geopytool.com
+huan https://geopytool.com/article
 
 # curl_cffi 后端（兼容更多网站）
-huan https://geopytool.com --fetcher curl
+huan https://geopytool.com/article --fetcher curl
 
 # 系统浏览器（推荐用于 JS 渲染的网站）
-huan https://geopytool.com --fetcher browser
+huan https://geopytool.com/article --fetcher browser
 
 # Playwright（需要先运行：playwright install chromium）
-huan https://geopytool.com --fetcher playwright
+huan https://geopytool.com/article --fetcher playwright
 ```
 
 **提示**：如果默认的 `requests` 后端在某个页面发现 0 个链接，工具会自动输出警告，建议尝试 `--fetcher curl` 或 `--fetcher browser`。
@@ -138,30 +142,30 @@ huan https://geopytool.com --fetcher playwright
 ### 无限滚动页面
 
 ```bash
-# 新闻订阅类网站：使用 /archive 端点 + browser 后端
-huan https://geopytool.com/archive --fetcher browser --scroll 50
+# 新闻订阅类网站：使用 /archive 端点 + browser 后端 + 递归
+huan https://geopytool.com/archive -r --fetcher browser --scroll 50
 
 # 带无限滚动的博客平台
-huan https://geopytool.com/ --fetcher browser --scroll 30
+huan https://geopytool.com/ -r --fetcher browser --scroll 30
 ```
 
 ### 其他选项
 
 ```bash
 # 同时保存原始 HTML
-huan https://geopytool.com --save-html
+huan https://geopytool.com/article --save-html
 
 # 禁用图片下载
-huan https://geopytool.com --no-download-images
+huan https://geopytool.com/article --no-download-images
 
 # 覆盖已存在的文件（禁用增量模式）
-huan https://geopytool.com --overwrite
+huan https://geopytool.com/article --overwrite
 
-# 只转换 /docs 路径下的页面
-huan https://geopytool.com --prefix /docs
+# 只转换 /docs 路径下的页面（递归模式）
+huan https://geopytool.com -r --prefix /docs
 
 # 详细输出，用于调试
-huan https://geopytool.com -v
+huan https://geopytool.com/article -v
 ```
 
 ## 命令行参数
@@ -172,7 +176,8 @@ huan https://geopytool.com -v
 | `-o, --output` | 输出目录（默认：域名） |
 | `-d, --delay` | 请求间隔秒数（默认：0.5） |
 | `-m, --max-pages` | 最大页面数限制（默认：无限制） |
-| `--prefix` | 只转换此路径前缀的 URL |
+| `-r, --recursive` | 递归转换整个网站（默认：只下载单页） |
+| `--prefix` | 只转换此路径前缀的 URL（递归模式） |
 | `--extractor` | 内容提取：readability、heuristic、full |
 | `--full` | `--extractor full` 的快捷别名 |
 | `--no-metadata` | 禁用 YAML front matter 元数据 |
@@ -216,6 +221,16 @@ example.com/
 ```python
 from huan import SiteCrawler
 
+# 单页（默认）
+converter = SiteCrawler(
+    start_url="https://geopytool.com/article-123",
+    output_dir="./archive",
+    download_images=True,
+    extractor="readability",
+)
+converter.crawl()
+
+# 递归转换
 converter = SiteCrawler(
     start_url="https://geopytool.com",
     output_dir="./archive",
@@ -223,6 +238,7 @@ converter = SiteCrawler(
     fetcher_type="browser",
     download_images=True,
     extractor="readability",
+    recursive=True,
 )
 converter.crawl()
 ```

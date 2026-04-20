@@ -999,6 +999,7 @@ class SiteCrawler:
         save_html: bool = False,
         extractor: str = "readability",
         metadata: bool = True,
+        recursive: bool = False,
     ):
         parsed = urlparse(start_url)
         if not parsed.scheme:
@@ -1023,6 +1024,7 @@ class SiteCrawler:
             self.use_readability = False
         self.extractor_name = "readability" if self.use_readability else ("full" if self.full_content else "heuristic")
         self.metadata = metadata
+        self.recursive = recursive
 
         if output_dir is None:
             safe_domain = re.sub(r'[<>:"/\\|?*]', "_", self.domain)
@@ -1668,6 +1670,7 @@ class SiteCrawler:
         print(f"Resume mode : {'off (overwrite)' if self.overwrite else 'on (skip existing)'}")
         print(f"Images      : {'download' if self.download_images else 'skip (URLs only)'}")
         print(f"Save HTML   : {'on' if self.save_html else 'off'}")
+        print(f"Recursive   : {'on (crawl entire site)' if self.recursive else 'off (single page only)'}")
         print(f"Verbose     : {'on' if self.verbose else 'off'}")
         print("=" * 64)
 
@@ -1694,13 +1697,14 @@ class SiteCrawler:
                             soup = BeautifulSoup(html, "html.parser")
                             new_links = self._extract_links(soup, url)
                             enqueued = 0
-                            for link in new_links:
-                                if link not in self.visited:
-                                    self.visited.add(link)
-                                    self.queue.append(link)
-                                    enqueued += 1
-                                    if self.verbose:
-                                        print(f"    [+queue] {link}")
+                            if self.recursive:
+                                for link in new_links:
+                                    if link not in self.visited:
+                                        self.visited.add(link)
+                                        self.queue.append(link)
+                                        enqueued += 1
+                                        if self.verbose:
+                                            print(f"    [+queue] {link}")
                             print(f"  -> found {len(new_links)} links, +{enqueued} new queued")
                             if len(new_links) == 0:
                                 print(f"  -> WARNING: 0 links found ({html_size} bytes HTML).")
@@ -1729,27 +1733,28 @@ class SiteCrawler:
                     print(f"  -> already exists: {fpath}")
 
                     # Still need to extract links from existing file to continue traversal
-                    try:
-                        with open(fpath, "r", encoding="utf-8") as f:
-                            existing_content = f.read()
-                        # Extract URLs from markdown links [text](url)
-                        md_links = re.findall(r'\]\(<([^>]+)>\)', existing_content)
-                        # Also extract bare URLs in markdown  [text](url) without angle brackets
-                        md_links += re.findall(r'\]\(([^)<>\s]+)\)', existing_content)
-                        extracted_count = 0
-                        for href in md_links:
-                            if href.startswith(("http://", "https://")):
-                                normalized = self._normalize(href)
-                                if self._is_internal(normalized) and normalized not in self.visited:
-                                    self.visited.add(normalized)
-                                    self.queue.append(normalized)
-                                    extracted_count += 1
-                                    if self.verbose:
-                                        print(f"    [+queue from md] {normalized}")
-                        if extracted_count > 0:
-                            print(f"  -> extracted {extracted_count} new links from existing markdown")
-                    except Exception:
-                        pass  # Ignore errors reading existing file
+                    if self.recursive:
+                        try:
+                            with open(fpath, "r", encoding="utf-8") as f:
+                                existing_content = f.read()
+                            # Extract URLs from markdown links [text](url)
+                            md_links = re.findall(r'\]\(<([^>]+)>\)', existing_content)
+                            # Also extract bare URLs in markdown  [text](url) without angle brackets
+                            md_links += re.findall(r'\]\(([^)<>\s]+)\)', existing_content)
+                            extracted_count = 0
+                            for href in md_links:
+                                if href.startswith(("http://", "https://")):
+                                    normalized = self._normalize(href)
+                                    if self._is_internal(normalized) and normalized not in self.visited:
+                                        self.visited.add(normalized)
+                                        self.queue.append(normalized)
+                                        extracted_count += 1
+                                        if self.verbose:
+                                            print(f"    [+queue from md] {normalized}")
+                            if extracted_count > 0:
+                                print(f"  -> extracted {extracted_count} new links from existing markdown")
+                        except Exception:
+                            pass  # Ignore errors reading existing file
                     continue
 
                 print(f"\n[{saved + 1}] {url}")
@@ -1770,15 +1775,16 @@ class SiteCrawler:
                 new_links = self._extract_links(soup, url)
                 enqueued = 0
                 already_seen = 0
-                for link in new_links:
-                    if link not in self.visited:
-                        self.visited.add(link)
-                        self.queue.append(link)
-                        enqueued += 1
-                        if self.verbose:
-                            print(f"    [+queue] {link}")
-                    else:
-                        already_seen += 1
+                if self.recursive:
+                    for link in new_links:
+                        if link not in self.visited:
+                            self.visited.add(link)
+                            self.queue.append(link)
+                            enqueued += 1
+                            if self.verbose:
+                                print(f"    [+queue] {link}")
+                        else:
+                            already_seen += 1
 
                 if saved == 0 and enqueued == 0 and len(new_links) == 0:
                     a_tags = soup.find_all("a", href=True)
@@ -1828,26 +1834,30 @@ def main():
 
     ap = argparse.ArgumentParser(
         prog="huan",
-        description="Convert web pages to Markdown files, preserving the "
-                    "site's directory structure.",
+        description="Convert web pages to Markdown files. Default: single page only. Use -r to crawl entire sites.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Examples:
-  # Convert entire site (default - no limit)
-  huan https://geopytool.com
+  # Convert single page (default)
+  huan https://geopytool.com/article-123
+
+  # Crawl entire site recursively
+  huan https://geopytool.com -r
 
   # Limit to first 100 pages
-  huan https://geopytool.com -m 100
+  huan https://geopytool.com -r -m 100
 
   # With proxy and curl backend
-  huan https://geopytool.com --fetcher curl --proxy http://127.0.0.1:7890
+  huan https://geopytool.com -r --fetcher curl --proxy http://127.0.0.1:7890
 
   # With system browser (Chrome/Edge) for JS-heavy sites
-  huan https://geopytool.com --fetcher browser --proxy http://127.0.0.1:7890
+  huan https://geopytool.com -r --fetcher browser --proxy http://127.0.0.1:7890
 
   # For newsletter sites - use /archive to get all articles (infinite scroll)
-  huan https://geopytool.com/archive --fetcher browser --scroll 30 --proxy http://127.0.0.1:7890
+  huan https://geopytool.com/archive -r --fetcher browser --scroll 30 --proxy http://127.0.0.1:7890
 
 Tips:
+  - Default mode: downloads only the provided URL as Markdown
+  - Use -r/--recursive to crawl the entire site
   - For newsletter sites: start with /archive URL to find all articles
   - Use --scroll 30 or higher for sites with many lazy-loaded articles
 """,
@@ -1952,6 +1962,11 @@ Tips:
         action="store_true",
         help="Suppress non-essential output",
     )
+    ap.add_argument(
+        "-r", "--recursive",
+        action="store_true",
+        help="Recursively crawl entire site (default: single page only)",
+    )
     args = ap.parse_args()
 
     # --full is an alias for --extractor full
@@ -1981,6 +1996,7 @@ Tips:
         save_html=args.save_html,
         extractor=extractor,
         metadata=not args.no_metadata,
+        recursive=args.recursive,
     )
     archiver.crawl()
 

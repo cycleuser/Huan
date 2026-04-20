@@ -1,18 +1,19 @@
 # huan
 
-A command-line tool that converts web pages to Markdown files, preserving the site's URL structure as a local folder hierarchy.
+A command-line tool that converts web pages to perfect Markdown files. By default, downloads only the provided URL. Use `-r` to transform entire sites.
 
 The name "huan" (换) means "convert" in Chinese.
 
 ## Features
 
-- **Web Page Conversion** - Traverses a website and converts every page to clean Markdown
+- **Single Page or Full Site** - Default: download one page as perfect Markdown. Use `-r` to recursively transform entire sites
+- **Perfect Markdown Output** - Clean, well-formatted Markdown with formulas, code blocks, and images
+- **Image Downloading** - Downloads all images to `images/` directory with relative path rewriting
+- **Math Formula Conversion** - MathML, MathJax, and KaTeX converted to LaTeX notation
 - **Readability Extraction** - Uses Mozilla's Readability algorithm for high-quality content extraction (via readability-lxml)
 - **Rich Metadata** - Extracts title, author, date, Open Graph, Schema.org etc. as YAML front matter
 - **Multiple HTTP Backends** - Choose from requests, curl_cffi, DrissionPage (system browser), or Playwright
 - **Infinite Scroll Support** - Automatic scrolling for lazy-loaded content
-- **Math Formula Conversion** - MathML, MathJax, and KaTeX converted to LaTeX notation
-- **Image Downloading** - Downloads images locally with relative path rewriting in Markdown
 - **Code Block Language Detection** - Preserves language hints from HTML for proper fenced code blocks
 - **Table Preprocessing** - Handles complex tables with colspan/rowspan for cleaner Markdown output
 - **Token Estimation** - Reports word count and estimated token count for LLM usage planning
@@ -61,27 +62,30 @@ pip install -e ".[all]"
 ### Basic Usage
 
 ```bash
-# Convert an entire site
-huan https://geopytool.com
+# Convert a single page to Markdown (default behavior)
+huan https://geopytool.com/article-123
 
-# Limit to first 100 pages
-huan https://geopytool.com -m 100
+# Recursively transform entire site
+huan https://geopytool.com -r
+
+# Limit recursive transform to first 100 pages
+huan https://geopytool.com -r -m 100
 
 # Specify output directory
-huan https://geopytool.com -o ./my-archive
+huan https://geopytool.com/article -o ./my-archive
 ```
 
 ### Content Extraction
 
 ```bash
 # Default: readability extraction (best quality, requires readability-lxml)
-huan https://geopytool.com
+huan https://geopytool.com/article
 
 # Heuristic extraction (tag-based, no extra dependency needed)
-huan https://geopytool.com --extractor heuristic
+huan https://geopytool.com/article --extractor heuristic
 
 # Full page content (no extraction filtering)
-huan https://geopytool.com --extractor full
+huan https://geopytool.com/article --extractor full
 ```
 
 ### Metadata
@@ -102,17 +106,17 @@ estimated_tokens: 3701
 
 To disable metadata extraction:
 ```bash
-huan https://geopytool.com --no-metadata
+huan https://geopytool.com/article --no-metadata
 ```
 
 ### With Proxy
 
 ```bash
 # Manual proxy
-huan https://geopytool.com --proxy http://127.0.0.1:7890
+huan https://geopytool.com/article --proxy http://127.0.0.1:7890
 
 # System proxy (from HTTP_PROXY/HTTPS_PROXY env vars)
-huan https://geopytool.com --system-proxy
+huan https://geopytool.com/article --system-proxy
 ```
 
 ### Different Fetcher Backends
@@ -121,16 +125,16 @@ Some sites use JavaScript to render content, which the default `requests` backen
 
 ```bash
 # Default: standard requests (fast, works for static sites)
-huan https://geopytool.com
+huan https://geopytool.com/article
 
 # curl_cffi backend (better compatibility with more sites)
-huan https://geopytool.com --fetcher curl
+huan https://geopytool.com/article --fetcher curl
 
 # System browser (recommended for JS-rendered sites)
-huan https://geopytool.com --fetcher browser
+huan https://geopytool.com/article --fetcher browser
 
 # Playwright (requires: playwright install chromium)
-huan https://geopytool.com --fetcher playwright
+huan https://geopytool.com/article --fetcher playwright
 ```
 
 **Tip**: If the default `requests` backend finds 0 links on a page, the tool will print a warning suggesting you try `--fetcher curl` or `--fetcher browser`.
@@ -138,30 +142,30 @@ huan https://geopytool.com --fetcher playwright
 ### For Sites with Infinite Scroll
 
 ```bash
-# Newsletter sites: use /archive endpoint + browser fetcher
-huan https://geopytool.com/archive --fetcher browser --scroll 50
+# Newsletter sites: use /archive endpoint + browser fetcher + recursive
+huan https://geopytool.com/archive -r --fetcher browser --scroll 50
 
 # Blog platforms with infinite scroll
-huan https://geopytool.com/ --fetcher browser --scroll 30
+huan https://geopytool.com/ -r --fetcher browser --scroll 30
 ```
 
 ### Additional Options
 
 ```bash
 # Save raw HTML alongside Markdown
-huan https://geopytool.com --save-html
+huan https://geopytool.com/article --save-html
 
 # Disable image downloading
-huan https://geopytool.com --no-download-images
+huan https://geopytool.com/article --no-download-images
 
 # Overwrite existing files (disable incremental mode)
-huan https://geopytool.com --overwrite
+huan https://geopytool.com/article --overwrite
 
-# Only convert pages under /docs
-huan https://geopytool.com --prefix /docs
+# Only convert pages under /docs (recursive mode)
+huan https://geopytool.com -r --prefix /docs
 
 # Verbose output for debugging
-huan https://geopytool.com -v
+huan https://geopytool.com/article -v
 ```
 
 ## Command-Line Options
@@ -172,7 +176,8 @@ huan https://geopytool.com -v
 | `-o, --output` | Output directory (default: domain name) |
 | `-d, --delay` | Seconds between requests (default: 0.5) |
 | `-m, --max-pages` | Limit number of pages (default: no limit) |
-| `--prefix` | Only convert URLs with this path prefix |
+| `-r, --recursive` | Recursively transform entire site (default: single page only) |
+| `--prefix` | Only convert URLs with this path prefix (recursive mode) |
 | `--extractor` | Content extraction: readability, heuristic, full |
 | `--full` | Alias for `--extractor full` |
 | `--no-metadata` | Disable YAML front matter metadata |
@@ -216,6 +221,16 @@ example.com/
 ```python
 from huan import SiteCrawler
 
+# Single page (default)
+converter = SiteCrawler(
+    start_url="https://geopytool.com/article-123",
+    output_dir="./archive",
+    download_images=True,
+    extractor="readability",
+)
+converter.crawl()
+
+# Recursive transform
 converter = SiteCrawler(
     start_url="https://geopytool.com",
     output_dir="./archive",
@@ -223,6 +238,7 @@ converter = SiteCrawler(
     fetcher_type="browser",
     download_images=True,
     extractor="readability",
+    recursive=True,
 )
 converter.crawl()
 ```
