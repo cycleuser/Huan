@@ -786,11 +786,20 @@ class SinglePageArchiver:
             # Update html to the modified version with images replaced
             html = str(full_soup)
         
-        # Use heuristic extraction to preserve images
-        content_soup = BeautifulSoup(html, "html.parser")
-        readable_title = None
-        self._strip_boilerplate(content_soup)
-        content_soup = self._heuristic_extract(content_soup)
+        if self.use_readability:
+            try:
+                doc = ReadabilityDocument(html)
+                readable_html = doc.summary()
+                readable_title = doc.short_title()
+                content_soup = BeautifulSoup(readable_html, "html.parser")
+            except Exception:
+                content_soup = BeautifulSoup(html, "html.parser")
+                readable_title = None
+                self._strip_boilerplate(content_soup)
+        else:
+            content_soup = BeautifulSoup(html, "html.parser")
+            readable_title = None
+            self._strip_boilerplate(content_soup)
         
         preprocess_math(content_soup)
         self._preprocess_tables(content_soup)
@@ -810,10 +819,6 @@ class SinglePageArchiver:
         for info in img_info_list:
             heading = info["heading"]
             md_img = info["md_img"]
-            rel_path = info["rel_path"]
-            # Check if image is already in the markdown (heuristic extraction preserved it)
-            if rel_path in md_body:
-                continue
             inserted = False
             if heading and len(heading) > 5:
                 escaped = re.escape(heading[:40])
