@@ -136,7 +136,11 @@ class RequestsFetcher(BaseFetcher):
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         if proxy:
             self.session.proxies = {"http": proxy, "https": proxy}
-        retry = Retry(total=2, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504])
+        retry = Retry(
+            total=3, backoff_factor=0.3,
+            status_forcelist=[500, 502, 503, 504],
+            allowed_methods=["GET", "HEAD"],
+        )
         adapter = HTTPAdapter(max_retries=retry)
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
@@ -145,6 +149,11 @@ class RequestsFetcher(BaseFetcher):
         try:
             resp = self.session.get(url, timeout=self.timeout, allow_redirects=True)
             resp.raise_for_status()
+        except requests.HTTPError as exc:
+            status = getattr(exc.response, "status_code", None)
+            if status == 429:
+                return None, "429 Too Many Requests"
+            return None, str(exc)
         except requests.RequestException as exc:
             return None, str(exc)
         ctype = resp.headers.get("Content-Type", "")
@@ -163,31 +172,50 @@ class RequestsFetcher(BaseFetcher):
 
 
 class CurlCffiFetcher(BaseFetcher):
-    def __init__(self, user_agent=DEFAULT_UA, verify_ssl=True, proxy=None, timeout=30):
+    def __init__(self, user_agent=DEFAULT_UA, verify_ssl=True, proxy=None, timeout=30, verbose=False):
         if not HAS_CURL_CFFI:
             raise ImportError("curl_cffi not installed")
         self.timeout = timeout
         self.verify_ssl = verify_ssl
         self.proxy = proxy
+        self._verbose = verbose
         self.session = curl_requests.Session(impersonate="chrome")
         headers = {"User-Agent": user_agent}
         headers.update(BROWSER_HEADERS)
         self.session.headers.update(headers)
 
     def fetch(self, url):
-        try:
-            resp = self.session.get(
-                url, timeout=self.timeout, allow_redirects=True,
-                verify=self.verify_ssl,
-                proxies={"http": self.proxy, "https": self.proxy} if self.proxy else None,
-            )
-            resp.raise_for_status()
-        except Exception as exc:
-            return None, str(exc)
-        ctype = resp.headers.get("Content-Type", "")
-        if "text/html" not in ctype and "application/xhtml" not in ctype:
-            return None, "not HTML content"
-        return resp.text, None
+        for attempt in range(6):
+            try:
+                resp = self.session.get(
+                    url, timeout=self.timeout, allow_redirects=True,
+                    verify=self.verify_ssl,
+                    proxies={"http": self.proxy, "https": self.proxy} if self.proxy else None,
+                )
+                if resp.status_code == 429:
+                    wait = self._retry_after(resp, attempt)
+                    if self._verbose:
+                        print(f"  [429] {url}: wait {wait:.0f}s (attempt {attempt + 1}/6)")
+                    time.sleep(wait)
+                    continue
+                resp.raise_for_status()
+            except Exception as exc:
+                return None, str(exc)
+            ctype = resp.headers.get("Content-Type", "")
+            if "text/html" not in ctype and "application/xhtml" not in ctype:
+                return None, "not HTML content"
+            return resp.text, None
+        return None, "429 Too Many Requests (max retries)"
+
+    @staticmethod
+    def _retry_after(resp, attempt):
+        ra = resp.headers.get("Retry-After", "").strip()
+        if ra:
+            try:
+                return min(float(ra), 60.0)
+            except ValueError:
+                pass
+        return min(5.0 * (2 ** attempt), 60.0)
 
     def close(self):
         self.session.close()
@@ -318,7 +346,7 @@ class DrissionPageFetcher(BaseFetcher):
         return "drission"
 
 
-def create_fetcher(fetcher_type, user_agent=DEFAULT_UA, verify_ssl=True, proxy=None, timeout=30, scroll_count=5):
+def create_fetcher(fetcher_type, user_agent=DEFAULT_UA, verify_ssl=True, proxy=None, timeout=30, scroll_count=5, verbose=False):
     if fetcher_type == "browser":
         if HAS_DRISSION:
             return DrissionPageFetcher(user_agent, verify_ssl, proxy, timeout, scroll_count)
@@ -339,7 +367,7 @@ def create_fetcher(fetcher_type, user_agent=DEFAULT_UA, verify_ssl=True, proxy=N
 
     if fetcher_type == "curl":
         if HAS_CURL_CFFI:
-            return CurlCffiFetcher(user_agent, verify_ssl, proxy, timeout)
+            return CurlCffiFetcher(user_agent, verify_ssl, proxy, timeout, verbose=verbose)
         print("[WARN] curl_cffi not installed. Falling back to requests...")
         fetcher_type = "requests"
 
@@ -717,7 +745,7 @@ class SinglePageArchiver:
             env_http = os.environ.get("HTTP_PROXY") or os.environ.get("http_proxy", "")
             actual_proxy = env_https or env_http or None
             self.proxy_label = actual_proxy or "(system-proxy requested but none found)"
-        self.fetcher = create_fetcher(fetcher_type, DEFAULT_UA, verify_ssl, actual_proxy, 30, scroll_count)
+        self.fetcher = create_fetcher(fetcher_type, DEFAULT_UA, verify_ssl, actual_proxy, 30, scroll_count, verbose=verbose)
         self.download_images = download_images
         self.image_downloader = None
         if download_images:
@@ -1093,7 +1121,7 @@ class SiteCrawler:
             env_http = os.environ.get("HTTP_PROXY") or os.environ.get("http_proxy", "")
             actual_proxy = env_https or env_http or None
             self.proxy_label = actual_proxy or "(system-proxy requested but none found)"
-        self.fetcher = create_fetcher(fetcher_type, DEFAULT_UA, verify_ssl, actual_proxy, 30, scroll_count)
+        self.fetcher = create_fetcher(fetcher_type, DEFAULT_UA, verify_ssl, actual_proxy, 30, scroll_count, verbose=verbose)
         self.download_images = download_images
         self.image_downloader = None
         if download_images:
@@ -1473,9 +1501,8 @@ class SiteCrawler:
     def _fetch(self, url):
         html, error = self.fetcher.fetch(url)
         if error:
-            print(f"  [ERROR] {error}")
-            return None
-        return html
+            return None, error
+        return html, None
 
     def crawl(self):
         start = _normalize_url(self.start_url)
@@ -1483,6 +1510,7 @@ class SiteCrawler:
         self.visited.add(start)
         saved = skipped = already_exists = 0
         total_words = total_tokens = 0
+        rate_limit_hits = 0
         print(f"Domain      : {self.domain}")
         print(f"Start URL   : {start}")
         print(f"Output dir  : {os.path.abspath(self.output_dir)}")
@@ -1504,19 +1532,54 @@ class SiteCrawler:
                     break
                 url = self.queue.popleft()
                 fpath = self._url_to_filepath(url)
-                if not self.overwrite and os.path.exists(fpath):
+                file_exists = not self.overwrite and os.path.exists(fpath)
+                if file_exists:
                     already_exists += 1
-                    print(f"\n[skip] {url}")
+                    print(f"\n[skip-save] {url}")
                     print(f"  -> already exists: {fpath}")
+                    if self.recursive:
+                        print(f"  -> re-fetching to discover links...")
+                        html, error = self._fetch(url)
+                        if html is None:
+                            if error and "429" in error:
+                                wait = min(15.0 * (1.5 ** rate_limit_hits), 120.0)
+                                rate_limit_hits += 1
+                                print(f"  [429] rate limited, waiting {wait:.0f}s then re-queuing (#{rate_limit_hits})...")
+                                time.sleep(wait)
+                                self.queue.append(url)
+                                continue
+                            print(f"  [ERROR] {error or 'fetch failed'} (link discovery skipped)")
+                        else:
+                            if rate_limit_hits > 0:
+                                rate_limit_hits = max(0, rate_limit_hits - 1)
+                            soup = BeautifulSoup(html, "html.parser")
+                            new_links = self._extract_links(soup, url)
+                            enqueued = 0
+                            for link in new_links:
+                                if link not in self.visited:
+                                    self.visited.add(link)
+                                    self.queue.append(link)
+                                    enqueued += 1
+                            print(f"     Found {len(new_links)} links, +{enqueued} new queued")
                     if self.delay > 0:
                         time.sleep(self.delay)
                     continue
                 print(f"\n[{saved + 1}] {url}")
-                html = self._fetch(url)
+                html, error = self._fetch(url)
                 if html is None:
+                    if error and "429" in error:
+                        wait = min(15.0 * (1.5 ** rate_limit_hits), 120.0)
+                        rate_limit_hits += 1
+                        print(f"  [429] rate limited, waiting {wait:.0f}s then re-queuing (#{rate_limit_hits})...")
+                        time.sleep(wait)
+                        self.queue.append(url)
+                        continue
                     skipped += 1
+                    print(f"  [ERROR] {error or 'fetch failed'}")
                     print("  -> skipped (not HTML or fetch error)")
                     continue
+                if rate_limit_hits > 0:
+                    rate_limit_hits = max(0, rate_limit_hits - 1)
                 html_size = len(html)
                 if self.verbose:
                     print(f"  [verbose] Fetched {html_size} bytes of HTML")
