@@ -1180,6 +1180,33 @@ class SiteCrawler:
             clean = ["index"]
         return os.path.join(self.output_dir, *clean) + ".md"
 
+    def _extract_links_from_markdown(self, md_filepath, page_url):
+        links = set()
+        try:
+            with open(md_filepath, "r", encoding="utf-8") as f:
+                content = f.read()
+        except Exception:
+            return links
+        md_link_re = re.compile(r'\[([^\]]*)\]\(([^)"\s>]+)\)')
+        for match in md_link_re.finditer(content):
+            href = match.group(2).strip()
+            if href.startswith(("javascript:", "mailto:", "tel:", "#", "data:")):
+                continue
+            absolute = urljoin(page_url, href)
+            normalized = _normalize_url(absolute)
+            if self._is_internal(normalized) and not self._should_skip(normalized):
+                links.add(normalized)
+        # Extract bare http/https URLs
+        bare_url_re = re.compile(r'(?<![\[\(])(https?://[^\s<>"\)\]]+)')
+        for match in bare_url_re.finditer(content):
+            href = match.group(1).rstrip(".,;:!?")
+            if "aisixiang.com" not in href:
+                continue
+            normalized = _normalize_url(href)
+            if self._is_internal(normalized) and not self._should_skip(normalized):
+                links.add(normalized)
+        return links
+
     def _extract_links(self, soup, page_url):
         links = set()
         for a in soup.find_all("a", href=True):
@@ -1538,18 +1565,15 @@ class SiteCrawler:
                     print(f"\n[skip-save] {url}")
                     print(f"  -> already exists: {fpath}")
                     if self.recursive:
-                        print(f"  -> re-fetching to discover links...")
-                        html, error = self._fetch(url)
-                        if html is None:
-                            if error and "429" in error:
-                                wait = min(15.0 * (1.5 ** rate_limit_hits), 120.0)
-                                rate_limit_hits += 1
-                                print(f"  [429] rate limited, waiting {wait:.0f}s then re-queuing (#{rate_limit_hits})...")
-                                time.sleep(wait)
-                                self.queue.append(url)
-                                continue
-                            print(f"  [ERROR] {error or 'fetch failed'} (link discovery skipped)")
+                        html = None
+                        # Try re-fetching HTML for full link discovery
+                        result = self.fetcher.fetch(url)
+                        if result is not None:
+                            html, fetch_error = result
                         else:
+                            html, fetch_error = None, "unknown error"
+                        if html and not fetch_error:
+                            print(f"  -> re-fetched for link discovery")
                             if rate_limit_hits > 0:
                                 rate_limit_hits = max(0, rate_limit_hits - 1)
                             soup = BeautifulSoup(html, "html.parser")
@@ -1561,6 +1585,23 @@ class SiteCrawler:
                                     self.queue.append(link)
                                     enqueued += 1
                             print(f"     Found {len(new_links)} links, +{enqueued} new queued")
+                        else:
+                            # Fallback: extract from saved markdown
+                            print(f"  -> re-fetch failed, using saved file for links...")
+                            if fetch_error and "429" in str(fetch_error):
+                                print(f"     [429] (markdown fallback)")
+                            enqueued = 0
+                            try:
+                                new_links = self._extract_links_from_markdown(fpath, url)
+                                for link in new_links:
+                                    if link not in self.visited:
+                                        self.visited.add(link)
+                                        self.queue.append(link)
+                                        enqueued += 1
+                                print(f"     Found {len(new_links)} links, +{enqueued} new queued")
+                            except Exception as exc:
+                                if self.verbose:
+                                    print(f"     [warn] link extraction failed: {exc}")
                     if self.delay > 0:
                         time.sleep(self.delay)
                     continue
