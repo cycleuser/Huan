@@ -1187,6 +1187,7 @@ class SiteCrawler:
                 content = f.read()
         except Exception:
             return links
+        # Extract markdown links: [text](url)
         md_link_re = re.compile(r'\[([^\]]*)\]\(([^)"\s>]+)\)')
         for match in md_link_re.finditer(content):
             href = match.group(2).strip()
