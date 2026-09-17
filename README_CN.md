@@ -18,6 +18,7 @@
 - **表格预处理** - 处理含有 colspan/rowspan 的复杂表格，输出更清晰的 Markdown 表格
 - **Token 估算** - 输出字数统计和 Token 估算值，方便 LLM 用量规划
 - **增量模式** - 跳过已存在的文件，高效地进行重复转换
+- **多站点跟踪** - `huan sites` 按配置持续同步文章/论坛类网站的本地存档，只抓新增内容
 - **代理支持** - 支持手动指定代理或使用系统环境变量
 - **保存原始 HTML** - 可选同时保存原始 HTML 文件
 
@@ -216,6 +217,65 @@ example.com/
 - 外部 CDN 图片保存在 `_external/{域名}/` 下
 - Markdown 中的图片引用使用相对路径
 
+## 多站点增量存档（`huan sites`）
+
+除了单页/整站转换，Huan 还能*跟踪*那些持续发布文章的网站，让本地 Markdown
+存档保持同步——**只下载本地还没有的内容**。每个站点用一个 JSON 配置描述
+（网址 + 本地保存路径 + 适配器类型），同一个命令可驱动任意多个目标。
+
+```bash
+# 生成配置模板，然后编辑里面的网址和保存路径
+huan sites --init
+
+# 列出已配置的站点
+huan sites --list
+
+# 增量更新全部站点
+huan sites
+
+# 只更新指定站点
+huan sites forum portal
+
+# 自定义配置 / 代理 / 请求间隔
+huan sites --config ./sites.example.json --proxy http://127.0.0.1:7897 \
+           --min-delay 3 --max-delay 8
+```
+
+配置格式（默认 `~/.config/huan/sites.json`）：
+
+```json
+{
+  "proxy": "http://127.0.0.1:7897",
+  "sites": {
+    "forum": {
+      "name": "My Forum",
+      "url": "https://forum.example.com",
+      "save_dir": "/path/to/archive/forum",
+      "type": "nodebb"
+    },
+    "portal": {
+      "name": "My Portal",
+      "url": "https://news.example.com",
+      "save_dir": "/path/to/archive/portal",
+      "type": "article-portal",
+      "id_pattern": "/(\\d+)\\.html",
+      "url_template": "{base}/data/{id}.html",
+      "title_strip": "[_\\s]*\\|.*$"
+    }
+  }
+}
+```
+
+通用适配器类型（代码里不写死任何网站）：
+
+| type | 站点类型 | 工作方式 | 额外参数 |
+|------|----------|----------|----------|
+| `nodebb` | NodeBB 类论坛 | 通过标准 JSON API 枚举分类/话题，逐帖保存 | `min_delay`、`max_delay` |
+| `article-portal` | 文章列表站点 | 从索引页发现文章 ID，用 Playwright 抓取，遇 HTTP 429 自动冷却重试 | `id_pattern`、`url_template`、`title_strip`、`cooldown` |
+
+新增一种结构类型 = 在 `huan/sites.py` 加一个函数并在 `_ADAPTERS` 注册。
+真实的网址/站名只存在于你本地的配置文件里，不会写进代码。
+
 ## Python API
 
 ```python
@@ -241,6 +301,17 @@ converter = SiteCrawler(
     recursive=True,
 )
 converter.crawl()
+```
+
+多站点增量更新：
+
+```python
+from huan.api import update_sites
+
+result = update_sites(["forum", "portal"], config_path="./sites.json")
+if result.success:
+    for site, stats in result.data.items():
+        print(site, stats)
 ```
 
 ## 系统要求

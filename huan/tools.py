@@ -80,6 +80,46 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "huan_update_sites",
+            "description": (
+                "Incrementally update one or more configured websites. Only "
+                "content not already saved locally is downloaded. Requires a "
+                "sites config that maps each site to its URL, local save path "
+                "and adapter type."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sites": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Site keys to update (omit for all configured sites).",
+                    },
+                    "config_path": {
+                        "type": "string",
+                        "description": "Path to sites.json config (default: ~/.config/huan/sites.json).",
+                    },
+                    "proxy": {
+                        "type": "string",
+                        "description": "Override proxy for this run.",
+                    },
+                    "min_delay": {
+                        "type": "number",
+                        "description": "Minimum delay between requests in seconds.",
+                        "default": 2.0,
+                    },
+                    "max_delay": {
+                        "type": "number",
+                        "description": "Maximum delay between requests in seconds.",
+                        "default": 6.0,
+                    },
+                },
+            },
+        },
+    },
 ]
 
 
@@ -92,6 +132,12 @@ def dispatch(name: str, arguments: dict[str, Any] | str) -> dict:
         from .api import archive_site
 
         result = archive_site(**arguments)
+        return result.to_dict()
+
+    if name == "huan_update_sites":
+        from .api import update_sites
+
+        result = update_sites(**arguments)
         return result.to_dict()
 
     raise ValueError(f"Unknown tool: {name}")

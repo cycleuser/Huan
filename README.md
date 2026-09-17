@@ -18,6 +18,7 @@ The name "huan" (换) means "convert" in Chinese.
 - **Table Preprocessing** - Handles complex tables with colspan/rowspan for cleaner Markdown output
 - **Token Estimation** - Reports word count and estimated token count for LLM usage planning
 - **Incremental Mode** - Skip existing files for efficient re-runs
+- **Multi-Site Tracker** - `huan sites` keeps config-driven archives of article/forum sites in sync, fetching only new content
 - **Proxy Support** - Manual proxy or system environment variables
 - **Save Raw HTML** - Optionally save original HTML alongside Markdown
 
@@ -216,6 +217,68 @@ example.com/
 - External CDN images go under `_external/{domain}/`
 - All image references in Markdown use relative paths
 
+## Incremental Site Archiving (`huan sites`)
+
+Beyond one-off page/site conversion, Huan can *track* sites that publish a
+stream of articles and keep a local Markdown archive in sync — downloading
+**only content that is not already saved**. Each site is described in a JSON
+config (URL + local save path + adapter type), so the same command drives any
+number of targets.
+
+```bash
+# Write a template config, then edit the URLs and save paths
+huan sites --init
+
+# List configured sites
+huan sites --list
+
+# Update every configured site (incremental)
+huan sites
+
+# Update only specific sites
+huan sites forum portal
+
+# Custom config / proxy / request pacing
+huan sites --config ./sites.example.json --proxy http://127.0.0.1:7897 \
+           --min-delay 3 --max-delay 8
+```
+
+Config format (`~/.config/huan/sites.json` by default):
+
+```json
+{
+  "proxy": "http://127.0.0.1:7897",
+  "sites": {
+    "forum": {
+      "name": "My Forum",
+      "url": "https://forum.example.com",
+      "save_dir": "/path/to/archive/forum",
+      "type": "nodebb"
+    },
+    "portal": {
+      "name": "My Portal",
+      "url": "https://news.example.com",
+      "save_dir": "/path/to/archive/portal",
+      "type": "article-portal",
+      "id_pattern": "/(\\d+)\\.html",
+      "url_template": "{base}/data/{id}.html",
+      "title_strip": "[_\\s]*\\|.*$"
+    }
+  }
+}
+```
+
+Generic adapter types (no website is hard-coded):
+
+| type | site kind | how it works | extra options |
+|------|-----------|--------------|---------------|
+| `nodebb` | NodeBB-style forum | enumerates categories/topics via the standard JSON API, saves each topic thread | `min_delay`, `max_delay` |
+| `article-portal` | article list site | discovers article IDs from the index page, fetches each with Playwright, auto-cools down on HTTP 429 | `id_pattern`, `url_template`, `title_strip`, `cooldown` |
+
+Adding a new structural type = add one function in `huan/sites.py` and register
+it in `_ADAPTERS`. Real site URLs/names live only in your local config file,
+never in the code.
+
 ## Python API
 
 ```python
@@ -241,6 +304,17 @@ converter = SiteCrawler(
     recursive=True,
 )
 converter.crawl()
+```
+
+Incremental multi-site update:
+
+```python
+from huan.api import update_sites
+
+result = update_sites(["forum", "portal"], config_path="./sites.json")
+if result.success:
+    for site, stats in result.data.items():
+        print(site, stats)
 ```
 
 ## Requirements

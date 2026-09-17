@@ -79,7 +79,7 @@ class TestArchiveSiteAPI:
 class TestToolsSchema:
     def test_tools_count(self):
         from huan.tools import TOOLS
-        assert len(TOOLS) == 1
+        assert len(TOOLS) == 2
 
     def test_tool_name(self):
         from huan.tools import TOOLS
@@ -157,3 +157,74 @@ class TestPackageExports:
     def test_sitecrawler(self):
         from huan import SiteCrawler
         assert SiteCrawler is not None
+
+
+class TestSitesConfig:
+    """Tests for the incremental multi-site archiving module."""
+
+    def test_write_and_load_template(self, tmp_path):
+        from huan.sites import load_sites_config, write_sites_config_template
+        cfg_path = tmp_path / "sites.json"
+        written = write_sites_config_template(cfg_path)
+        assert written == cfg_path and cfg_path.exists()
+
+        conf = load_sites_config(cfg_path)
+        assert "sites" in conf
+        assert conf["sites"], "template should contain example sites"
+        for site in conf["sites"].values():
+            assert {"name", "url", "save_dir", "type"} <= set(site)
+            # no real website should be hard-coded in the template
+            assert "example.com" in site["url"]
+
+    def test_load_missing_returns_empty(self, tmp_path):
+        from huan.sites import load_sites_config
+        conf = load_sites_config(tmp_path / "nope.json")
+        assert conf["sites"] == {}
+
+    def test_no_real_urls_hardcoded(self):
+        from huan.sites import DEFAULT_SITES, ADAPTER_DEFAULTS
+        assert DEFAULT_SITES == {}, "module must not ship any site config"
+        for opts in ADAPTER_DEFAULTS.values():
+            assert "url" not in opts
+            assert "save_dir" not in opts
+
+    def test_update_unknown_site(self, tmp_path):
+        import json
+        from huan.sites import update_sites
+        cfg = tmp_path / "sites.json"
+        cfg.write_text(json.dumps({"proxy": None, "sites": {}}), encoding="utf-8")
+        results = update_sites(["does-not-exist"], config_path=str(cfg))
+        assert "error" in results["does-not-exist"]
+
+    def test_unknown_adapter_type(self, tmp_path):
+        from huan.sites import update_site
+        with pytest.raises(ValueError):
+            update_site("x", {"type": "nope", "save_dir": str(tmp_path)})
+
+
+class TestSitesAPI:
+    def test_api_update_sites_bad_config(self, tmp_path):
+        from huan.api import update_sites
+        result = update_sites(config_path=str(tmp_path / "missing.json"))
+        assert isinstance(result.data, dict)
+
+    def test_tool_dispatch_registered(self):
+        from huan.tools import TOOLS, dispatch
+        names = {t["function"]["name"] for t in TOOLS}
+        assert "huan_update_sites" in names
+        with pytest.raises(ValueError):
+            dispatch("unknown_tool", {})
+
+
+class TestSitesCLI:
+    def test_cli_list(self, tmp_path):
+        import subprocess, sys
+        cfg = tmp_path / "sites.json"
+        from huan.sites import write_sites_config_template
+        write_sites_config_template(cfg)
+        out = subprocess.run(
+            [sys.executable, "-m", "huan", "sites", "--list", "--config", str(cfg)],
+            capture_output=True, text=True)
+        assert out.returncode == 0
+        assert "forum" in out.stdout
+        assert "portal" in out.stdout

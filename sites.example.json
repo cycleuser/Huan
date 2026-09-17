@@ -1,0 +1,20 @@
+{
+  "proxy": "http://127.0.0.1:7897",
+  "sites": {
+    "forum": {
+      "name": "My Forum",
+      "url": "https://forum.example.com",
+      "save_dir": "/path/to/archive/forum",
+      "type": "nodebb"
+    },
+    "portal": {
+      "name": "My Portal",
+      "url": "https://news.example.com",
+      "save_dir": "/path/to/archive/portal",
+      "type": "article-portal",
+      "id_pattern": "/(\\d+)\\.html",
+      "url_template": "{base}/data/{id}.html",
+      "title_strip": "[_\\s]*\\|.*$"
+    }
+  }
+}

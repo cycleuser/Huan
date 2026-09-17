@@ -1201,8 +1201,6 @@ class SiteCrawler:
         bare_url_re = re.compile(r'(?<![\[\(])(https?://[^\s<>"\)\]]+)')
         for match in bare_url_re.finditer(content):
             href = match.group(1).rstrip(".,;:!?")
-            if "aisixiang.com" not in href:
-                continue
             normalized = _normalize_url(href)
             if self._is_internal(normalized) and not self._should_skip(normalized):
                 links.add(normalized)
@@ -1661,8 +1659,80 @@ class SiteCrawler:
         print(f"Output: {os.path.abspath(self.output_dir)}")
 
 
+def _sites_main(argv: list[str]) -> None:
+    """Entry point for `huan sites ...` — incremental multi-site archiving."""
+    import argparse as _ap
+    ap = _ap.ArgumentParser(
+        prog="huan sites",
+        description="Incrementally archive configured websites (only new content).",
+        formatter_class=_ap.RawDescriptionHelpFormatter,
+        epilog="""Examples:
+  # Update every configured site
+  huan sites
+
+  # Update specific sites (keys come from your config)
+  huan sites forum portal
+
+  # Write a template config, then edit URLs / save paths
+  huan sites --init
+
+  # List configured sites
+  huan sites --list
+
+  # Use a custom config file and proxy
+  huan sites --config ./sites.json --proxy http://127.0.0.1:7897
+""")
+    ap.add_argument("keys", nargs="*", help="site keys to update (default: all)")
+    ap.add_argument("--config", default=None, help="path to sites.json config")
+    ap.add_argument("--init", action="store_true", help="write a template config and exit")
+    ap.add_argument("--list", action="store_true", help="list configured sites and exit")
+    ap.add_argument("--proxy", default=None, help="override proxy for this run")
+    ap.add_argument("--min-delay", type=float, default=2.0, help="min delay between requests")
+    ap.add_argument("--max-delay", type=float, default=6.0, help="max delay between requests")
+    ap.add_argument("-q", "--quiet", action="store_true", help="quiet mode")
+    ap.add_argument("--json", action="store_true", help="print JSON summary")
+    args = ap.parse_args(argv)
+
+    from huan.sites import (default_config_path, load_sites_config,
+                            update_sites, write_sites_config_template)
+
+    if args.init:
+        path = write_sites_config_template(args.config)
+        print(f"Template config written to: {path}")
+        print("Edit the URLs and save_dir paths, then run: huan sites")
+        return
+
+    if args.list:
+        conf = load_sites_config(args.config)
+        print(f"config: {args.config or default_config_path()}")
+        print(f"proxy : {conf.get('proxy')}")
+        for key, cfg in conf.get("sites", {}).items():
+            print(f"  {key:12s} {cfg.get('name', ''):24s} "
+                  f"{cfg.get('url', ''):32s} -> {cfg.get('save_dir', '')}")
+        return
+
+    results = update_sites(args.keys, config_path=args.config, proxy=args.proxy,
+                           min_delay=args.min_delay, max_delay=args.max_delay)
+    if args.json:
+        import json as _json
+        print(_json.dumps(results, ensure_ascii=False, indent=2))
+        return
+    print("\n" + "=" * 50)
+    print("Summary:")
+    for key, res in results.items():
+        if "error" in res:
+            print(f"  {key}: ERROR - {res['error']}")
+        else:
+            print(f"  {key}: +{res.get('new', 0)} new, {res.get('total', 0)} total")
+    print("=" * 50)
+
+
 def main():
     from huan import __version__
+    # `huan sites ...` subcommand for incremental multi-site archiving
+    if len(sys.argv) > 1 and sys.argv[1] == "sites":
+        _sites_main(sys.argv[2:])
+        return
     ap = argparse.ArgumentParser(
         prog="huan",
         description="Convert web pages to Markdown. Default: single page mode (no site structure). Use --batch or -r for site structure preservation.",
@@ -1703,6 +1773,8 @@ def main():
     ap.add_argument("--scroll", type=int, default=5, help="Scroll iterations for lazy-loaded content (default: 5)")
     ap.add_argument("--overwrite", action="store_true", help="Overwrite existing files")
     ap.add_argument("-v", "--verbose", action="store_true", help="Verbose mode")
+    ap.add_argument("-q", "--quiet", action="store_true", help="Quiet mode: suppress progress output")
+    ap.add_argument("--json", action="store_true", help="Print a machine-readable JSON summary at the end")
     ap.add_argument("--no-download-images", action="store_true", help="Disable downloading images")
     ap.add_argument("--save-html", action="store_true", help="Also save original HTML files (batch mode)")
     ap.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
@@ -1726,6 +1798,14 @@ def main():
             download_images=not args.no_download_images, save_html=args.save_html,
             extractor=extractor, metadata=not args.no_metadata, recursive=args.recursive)
         archiver.crawl()
+        if args.json:
+            import json as _json
+            print(_json.dumps({
+                "mode": "batch",
+                "url": url,
+                "output_dir": str(archiver.output_dir),
+                "pages_saved": getattr(archiver, "saved_count", None),
+            }, ensure_ascii=False))
     else:
         archiver = SinglePageArchiver(
             output_dir=output_dir, verify_ssl=not args.no_verify_ssl, proxy=args.proxy,
@@ -1736,7 +1816,17 @@ def main():
         archiver.close()
         if archiver.image_downloader:
             dl = archiver.image_downloader
-            print(f"\nImages: {dl.download_count} downloaded, {dl.skip_count} skipped, {dl.error_count} errors")
+            if not args.quiet:
+                print(f"\nImages: {dl.download_count} downloaded, {dl.skip_count} skipped, {dl.error_count} errors")
+            if args.json:
+                import json as _json
+                print(_json.dumps({
+                    "mode": "single",
+                    "url": url,
+                    "output_dir": str(output_dir),
+                    "images": {"downloaded": dl.download_count,
+                               "skipped": dl.skip_count, "errors": dl.error_count},
+                }, ensure_ascii=False))
 
 
 if __name__ == "__main__":

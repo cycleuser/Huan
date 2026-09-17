@@ -127,3 +127,53 @@ def archive_site(
         )
     except Exception as e:
         return ToolResult(success=False, error=str(e))
+
+
+def update_sites(
+    sites: list[str] | None = None,
+    *,
+    config_path: str | None = None,
+    proxy: str | None = None,
+    min_delay: float = 2.0,
+    max_delay: float = 6.0,
+) -> ToolResult:
+    """Incrementally update one or more configured websites.
+
+    Unlike :func:`archive_site` (which crawls an arbitrary site), this works
+    against a *site config* that knows how to enumerate a site's articles and
+    where to save them.  Only content not already saved locally is fetched.
+
+    Parameters
+    ----------
+    sites : list[str] or None
+        Site keys to update (None = all configured sites).
+    config_path : str or None
+        Path to a sites.json config (default: ~/.config/huan/sites.json).
+    proxy : str or None
+        Override the proxy for this run.
+    min_delay, max_delay : float
+        Delay range between requests (seconds).
+
+    Returns
+    -------
+    ToolResult
+        data maps each site key to its per-site stats.
+    """
+    try:
+        from huan import __version__
+        from huan.sites import load_sites_config, update_sites as _update
+
+        conf = load_sites_config(config_path)
+        results = _update(sites, config_path=config_path, proxy=proxy,
+                          min_delay=min_delay, max_delay=max_delay)
+        return ToolResult(
+            success=all("error" not in r for r in results.values()),
+            data=results,
+            metadata={
+                "config": config_path,
+                "proxy": proxy if proxy is not None else conf.get("proxy"),
+                "version": __version__,
+            },
+        )
+    except Exception as e:  # noqa: BLE001
+        return ToolResult(success=False, error=str(e))
