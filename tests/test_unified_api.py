@@ -228,3 +228,39 @@ class TestSitesCLI:
         assert out.returncode == 0
         assert "forum" in out.stdout
         assert "portal" in out.stdout
+
+
+class TestPortalParse:
+    """Regression tests for the generic article-portal parser."""
+
+    def _page(self, title, body):
+        return (f"<html><head><title>{title}</title></head>"
+                f"<body><p>{body}</p></body></html>")
+
+    def test_legit_title_containing_keyword(self):
+        from huan.sites import _portal_parse
+        # a real article whose title happens to contain '错误' must be kept
+        long_body = "内容" * 400
+        title, md, wc = _portal_parse(
+            self._page("某人：论某某错误史观", long_body), "https://x/y", None)
+        assert md is not None
+        assert "错误史观" in title
+
+    def test_error_page_rejected(self):
+        from huan.sites import _portal_parse
+        title, md, wc = _portal_parse(
+            self._page("提示信息", "x"), "https://x/y", None)
+        assert md is None
+
+    def test_placeholder_title_rejected(self):
+        from huan.sites import _portal_parse
+        long_body = "内容" * 400
+        title, md, wc = _portal_parse(
+            self._page("Article 12345", long_body), "https://x/y", None)
+        assert md is None
+
+    def test_short_body_rejected(self):
+        from huan.sites import _portal_parse
+        title, md, wc = _portal_parse(
+            self._page("正常标题", "太短"), "https://x/y", None)
+        assert md is None

@@ -387,7 +387,10 @@ def _portal_parse(html: str, url: str, title_strip: str | None) -> tuple[str, st
     body = "\n".join(l.strip() for l in body.split("\n") if l.strip())
     wc = len(body)
 
-    if any(k in title for k in ("提示信息", "404", "页面不存在", "错误")):
+    # Only reject actual error/placeholder pages: exact short titles, or a
+    # placeholder "Article <id>" title, or an empty/too-short body.
+    bad_titles = {"提示信息", "404", "页面不存在", "错误"}
+    if title.strip() in bad_titles or title.strip().startswith("Article "):
         return title, None, wc
     if wc <= 300 or not title:
         return title, None, wc
